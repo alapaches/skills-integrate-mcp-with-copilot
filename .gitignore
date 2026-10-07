@@ -41,6 +41,3 @@ __pycache__
 
 # Env files
 .env
-
-# Local teacher credentials
-src/teachers.json

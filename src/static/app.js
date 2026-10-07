@@ -3,45 +3,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
-  const signupContainer = document.getElementById("signup-container");
-  const openLoginButton = document.getElementById("open-login-button");
-  const teacherSessionElement = document.getElementById("teacher-session");
-  const teacherIdentity = document.getElementById("teacher-identity");
-  const logoutButton = document.getElementById("logout-button");
-  const loginDialog = document.getElementById("login-dialog");
-  const loginForm = document.getElementById("login-form");
-  const loginMessage = document.getElementById("login-message");
-  const cancelLoginButton = document.getElementById("cancel-login-button");
-  let teacherSession = null;
-
-  function updateAuthUI() {
-    const isTeacher = teacherSession !== null;
-    openLoginButton.classList.toggle("hidden", isTeacher);
-    teacherSessionElement.classList.toggle("hidden", !isTeacher);
-    signupContainer.classList.toggle("hidden", !isTeacher);
-    teacherIdentity.textContent = isTeacher ? `Signed in as ${teacherSession.username}` : "";
-  }
-
-  async function refreshTeacherSession() {
-    try {
-      const response = await fetch("/auth/me");
-      teacherSession = response.ok ? await response.json() : null;
-    } catch (error) {
-      teacherSession = null;
-    }
-    updateAuthUI();
-  }
 
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
       const response = await fetch("/activities");
-      if (!response.ok) throw new Error("Failed to load activities");
       const activities = await response.json();
 
       // Clear loading message
       activitiesList.innerHTML = "";
-      activitySelect.replaceChildren(new Option("-- Select an activity --", ""));
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -59,11 +29,8 @@ document.addEventListener("DOMContentLoaded", () => {
               <ul class="participants-list">
                 ${details.participants
                   .map(
-                    (email) => `<li><span class="participant-email">${email}</span>${
-                      teacherSession
-                        ? `<button class="delete-btn" data-activity="${name}" data-email="${email}">Remove</button>`
-                        : ""
-                    }</li>`
+                    (email) =>
+                      `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button></li>`
                   )
                   .join("")}
               </ul>
@@ -188,61 +155,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  openLoginButton.addEventListener("click", () => {
-    loginMessage.textContent = "";
-    loginMessage.classList.add("hidden");
-    loginDialog.showModal();
-    document.getElementById("teacher-username").focus();
-  });
-
-  cancelLoginButton.addEventListener("click", () => loginDialog.close());
-
-  loginForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const formData = new FormData(loginForm);
-    const submitButton = loginForm.querySelector("button[type='submit']");
-    submitButton.disabled = true;
-
-    try {
-      const response = await fetch("/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: formData.get("username"),
-          password: formData.get("password"),
-        }),
-      });
-      const result = await response.json();
-
-      if (!response.ok) throw new Error(result.detail || "Unable to log in");
-
-      teacherSession = result;
-      updateAuthUI();
-      loginDialog.close();
-      loginForm.reset();
-      await fetchActivities();
-    } catch (error) {
-      loginMessage.textContent = error.message || "Unable to log in";
-      loginMessage.classList.remove("hidden");
-    } finally {
-      submitButton.disabled = false;
-    }
-  });
-
-  logoutButton.addEventListener("click", async () => {
-    try {
-      const response = await fetch("/auth/logout", { method: "POST" });
-      if (!response.ok) throw new Error("Unable to log out");
-      teacherSession = null;
-      updateAuthUI();
-      await fetchActivities();
-    } catch (error) {
-      messageDiv.textContent = error.message || "Unable to log out";
-      messageDiv.className = "error";
-      messageDiv.classList.remove("hidden");
-    }
-  });
-
   // Initialize app
-  refreshTeacherSession().then(fetchActivities);
+  fetchActivities();
 });
